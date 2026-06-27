@@ -786,14 +786,18 @@ function mergeTagMaps(baseDb, srcDb, locMap, noteMap, tagMap) {
   const rows = srcDb.exec(`SELECT PlaylistItemId, LocationId, NoteId, TagId, Position FROM TagMap`);
   if (!rows.length) return;
   let maxId = getMaxId(baseDb, 'TagMap', 'TagMapId');
+  const exSet = new Set();
+  const exRows = baseDb.exec(`SELECT TagId, NoteId, LocationId, Position FROM TagMap`);
+  if (exRows.length) exRows[0].values.forEach(r => exSet.add(r[0]+'_'+r[1]+'_'+r[2]+'_'+r[3]));
   for (let [plId, locId, noteId, tagId, pos] of rows[0].values) {
     const mLoc  = locId  ? (locMap[locId]   ?? null) : null;
     const mNote = noteId ? (noteMap[noteId]  ?? null) : null;
     const mTag  = tagId  ? (tagMap[tagId]   ?? null) : null;
-    const ex = baseDb.exec(`SELECT TagMapId FROM TagMap WHERE TagId IS ? AND NoteId IS ? AND LocationId IS ?`, [mTag, mNote, mLoc]);
-    if (!ex.length || !ex[0].values.length) {
+    const key = mTag+'_'+mNote+'_'+mLoc+'_'+pos;
+    if (!exSet.has(key)) {
       maxId++;
-      baseDb.run(`INSERT INTO TagMap VALUES (?,?,?,?,?,?)`, [maxId, plId, mLoc, mNote, mTag, pos]);
+      baseDb.run(`INSERT OR IGNORE INTO TagMap VALUES (?,?,?,?,?,?)`, [maxId, plId, mLoc, mNote, mTag, pos]);
+      exSet.add(key);
     }
   }
 }
