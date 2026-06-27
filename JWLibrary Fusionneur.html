@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JW Fusionneur</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Spectral:wght@400;600&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --accent: #7c6af7;
+    --accent2: #a78bfa;
+    --gold: #f0c060;
+    --text: #e8e8f0;
+    --muted: #7a7a9a;
+    --success: #4ade80;
+    --error: #f87171;
+    --border: rgba(124,106,247,0.18);
+    --radius: 14px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px 60px;
+  }
+
+  /* Header */
+  header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .logo-icon {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  h1 {
+    font-family: 'Spectral', serif;
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+  .subtitle {
+    color: var(--muted);
+    font-size: 14px;
+    margin-top: 6px;
+    font-weight: 300;
+  }
+
+  /* Main card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    width: 100%;
+    max-width: 520px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin-bottom: 16px;
+  }
+
+  /* Drop zones */
+  .drop-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 20px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+    background: var(--surface2);
+  }
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(124,106,247,0.07);
+  }
+  .drop-zone.loaded {
+    border-color: var(--success);
+    border-style: solid;
+    background: rgba(74,222,128,0.05);
+  }
+  .drop-zone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .drop-icon { font-size: 24px; margin-bottom: 6px; }
+  .drop-label { font-size: 13px; color: var(--muted); }
+  .drop-label strong { color: var(--text); font-weight: 500; }
+  .drop-filename {
+    display: none;
+    font-size: 13px;
+    color: var(--success);
+    font-weight: 500;
+    margin-top: 4px;
+    word-break: break-all;
+  }
+  .drop-zone.loaded .drop-filename { display: block; }
+  .drop-zone.loaded .drop-label { color: var(--muted); font-size: 12px; }
+
+  .add-file-btn {
+    border: 2px dashed rgba(124,106,247,0.3);
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+    cursor: pointer;
+    background: transparent;
+    color: var(--accent2);
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    width: 100%;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+  }
+  .add-file-btn:hover { border-color: var(--accent); background: rgba(124,106,247,0.07); }
+  .add-file-btn input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+
+  /* Options */
+  .options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .option-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    user-select: none;
+  }
+  .option-chip input { display: none; }
+  .option-chip .chip-check {
+    width: 16px; height: 16px;
+    border-radius: 4px;
+    border: 2px solid var(--muted);
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .option-chip input:checked ~ .chip-check {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .option-chip input:checked ~ .chip-check::after { content: '✓'; color: white; }
+  .option-chip .chip-label { font-size: 13px; color: var(--text); }
+  .option-chip:has(input:checked) { border-color: var(--accent); background: rgba(124,106,247,0.08); }
+
+  /* Merge button */
+  .merge-btn {
+    width: 100%;
+    padding: 16px;
+    border-radius: var(--radius);
+    border: none;
+    background: linear-gradient(135deg, var(--accent), #9b8df8);
+    color: white;
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    letter-spacing: 0.2px;
+  }
+  .merge-btn:hover:not(:disabled) { opacity: 0.9; }
+  .merge-btn:active:not(:disabled) { transform: scale(0.98); }
+  .merge-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Progress */
+  #progress-area { display: none; }
+  .progress-bar-wrap {
+    background: var(--surface2);
+    border-radius: 100px;
+    height: 6px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 100px;
+    transition: width 0.3s ease;
+    width: 0%;
+  }
+  .log-box {
+    background: var(--surface2);
+    border-radius: 10px;
+    padding: 14px;
+    font-size: 12px;
+    color: var(--muted);
+    max-height: 180px;
+    overflow-y: auto;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    line-height: 1.7;
+  }
+  .log-box .log-ok { color: var(--success); }
+  .log-box .log-warn { color: var(--gold); }
+  .log-box .log-err { color: var(--error); }
+
+  /* Result */
+  #result-area { display: none; }
+  .result-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .stat-box {
+    background: var(--surface2);
+    border-radius: 10px;
+    padding: 12px 10px;
+    text-align: center;
+    border: 1px solid var(--border);
+  }
+  .stat-value {
+    font-family: 'Spectral', serif;
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--accent2);
+  }
+  .stat-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .download-btn {
+    width: 100%;
+    padding: 16px;
+    border-radius: var(--radius);
+    border: none;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: white;
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .download-btn:hover { opacity: 0.9; }
+
+  .reset-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+    margin-top: 10px;
+  }
+  .reset-btn:hover { color: var(--text); border-color: var(--muted); }
+
+  /* Privacy note */
+  .privacy {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+    padding: 12px 16px;
+    background: rgba(74,222,128,0.05);
+    border: 1px solid rgba(74,222,128,0.15);
+    border-radius: 10px;
+    max-width: 520px;
+    width: 100%;
+    margin-bottom: 16px;
+  }
+
+  .section-gap { margin-top: 16px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">📚</div>
+    <h1>JW Fusionneur</h1>
+  </div>
+  <p class="subtitle">Fusionnez vos sauvegardes JW Library en quelques secondes</p>
+</header>
+
+<div class="privacy">
+  🔒 Traitement 100 % local — vos données ne quittent jamais votre appareil
+</div>
+
+<!-- FILES -->
+<div class="card">
+  <div class="card-title">Fichiers à fusionner</div>
+  <div class="drop-list" id="drop-list">
+    <!-- dynamically generated -->
+  </div>
+  <div style="margin-top:10px">
+    <button class="add-file-btn" onclick="addDropZone()">
+      + Ajouter un fichier .jwlibrary
+      <input type="file" accept=".jwlibrary" onchange="handleExtraFile(this)">
+    </button>
+  </div>
+</div>
+
+<!-- OPTIONS -->
+<div class="card">
+  <div class="card-title">Données à fusionner</div>
+  <div class="options-grid">
+    <label class="option-chip"><input type="checkbox" id="opt-notes" checked><span class="chip-check"></span><span class="chip-label">📝 Notes</span></label>
+    <label class="option-chip"><input type="checkbox" id="opt-marks" checked><span class="chip-check"></span><span class="chip-label">🖍 Surlignages</span></label>
+    <label class="option-chip"><input type="checkbox" id="opt-bookmarks" checked><span class="chip-check"></span><span class="chip-label">🔖 Signets</span></label>
+    <label class="option-chip"><input type="checkbox" id="opt-inputs" checked><span class="chip-check"></span><span class="chip-label">✏️ Champs</span></label>
+    <label class="option-chip"><input type="checkbox" id="opt-tags" checked><span class="chip-check"></span><span class="chip-label">🏷 Tags</span></label>
+    <label class="option-chip"><input type="checkbox" id="opt-playlists" checked><span class="chip-check"></span><span class="chip-label">▶️ Playlists</span></label>
+  </div>
+</div>
+
+<!-- MERGE BUTTON -->
+<div style="width:100%;max-width:520px;margin-bottom:16px">
+  <button class="merge-btn" id="merge-btn" onclick="startMerge()" disabled>
+    Fusionner les fichiers
+  </button>
+</div>
+
+<!-- PROGRESS -->
+<div class="card" id="progress-area">
+  <div class="card-title">Traitement en cours…</div>
+  <div class="progress-bar-wrap">
+    <div class="progress-bar-fill" id="progress-fill"></div>
+  </div>
+  <div class="log-box" id="log-box"></div>
+</div>
+
+<!-- RESULT -->
+<div class="card" id="result-area">
+  <div class="card-title">✅ Fusion réussie</div>
+  <div class="result-stats" id="result-stats"></div>
+  <button class="download-btn" id="download-btn">
+    📤 Ouvrir le fichier fusionné
+  </button>
+  <p style="font-size:12px;color:#7a7a9a;margin-top:10px;text-align:center;line-height:1.6">
+    Le fichier s'ouvre dans un nouvel onglet →<br>
+    appuyez sur <strong style="color:#e8e8f0">⬆️ Partager</strong> en bas de Safari<br>
+    puis <strong style="color:#e8e8f0">Enregistrer dans Fichiers</strong> ou <strong style="color:#e8e8f0">JW Library</strong>
+  </p>
+  <button class="reset-btn" onclick="resetApp()">Recommencer</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+let files = [null, null];
+let SQL = null;
+
+// ─── Init sql.js ─────────────────────────────────────────────────────────────
+initSqlJs({ locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/${f}` })
+  .then(s => { SQL = s; log('ok', 'Moteur SQLite prêt'); });
+
+// ─── Build initial drop zones ─────────────────────────────────────────────────
+function buildDropZones() {
+  const list = document.getElementById('drop-list');
+  list.innerHTML = '';
+  files.forEach((_, i) => createZone(i));
+}
+
+function createZone(i) {
+  const list = document.getElementById('drop-list');
+  const div = document.createElement('div');
+  div.className = 'drop-zone';
+  div.id = `zone-${i}`;
+  div.innerHTML = `
+    <input type="file" accept=".jwlibrary" onchange="handleFile(this,${i})">
+    <div class="drop-icon">${i===0?'📱':'📲'}</div>
+    <div class="drop-label"><strong>Fichier ${i+1}</strong> — appuyez pour sélectionner</div>
+    <div class="drop-filename" id="name-${i}"></div>
+  `;
+  ['dragover','dragleave','drop'].forEach(ev => div.addEventListener(ev, e => {
+    e.preventDefault();
+    if(ev==='dragover') div.classList.add('dragover');
+    else if(ev==='dragleave') div.classList.remove('dragover');
+    else { div.classList.remove('dragover'); loadFileAt(e.dataTransfer.files[0], i); }
+  }));
+  list.appendChild(div);
+}
+
+function addDropZone() {
+  const i = files.length;
+  files.push(null);
+  createZone(i);
+  // update icon for added zones
+  document.querySelector(`#zone-${i} .drop-icon`).textContent = '💾';
+}
+
+function handleFile(input, i) { if(input.files[0]) loadFileAt(input.files[0], i); }
+function handleExtraFile(input) {
+  const i = files.length - 1;
+  if(input.files[0]) loadFileAt(input.files[0], i);
+}
+
+function loadFileAt(file, i) {
+  if(!file.name.endsWith('.jwlibrary')) { alert('Veuillez sélectionner un fichier .jwlibrary'); return; }
+  files[i] = file;
+  const zone = document.getElementById(`zone-${i}`);
+  zone.classList.add('loaded');
+  document.getElementById(`name-${i}`).textContent = '✓ ' + file.name;
+  checkReady();
+}
+
+function checkReady() {
+  const loaded = files.filter(Boolean).length;
+  document.getElementById('merge-btn').disabled = loaded < 2;
+}
+
+buildDropZones();
+
+// ─── Logging ─────────────────────────────────────────────────────────────────
+function log(type, msg) {
+  const box = document.getElementById('log-box');
+  const span = document.createElement('div');
+  span.className = type === 'ok' ? 'log-ok' : type === 'warn' ? 'log-warn' : type === 'err' ? 'log-err' : '';
+  const prefix = type==='ok'?'✓ ':type==='warn'?'⚠ ':type==='err'?'✗ ':'  ';
+  span.textContent = prefix + msg;
+  box.appendChild(span);
+  box.scrollTop = box.scrollHeight;
+}
+
+function setProgress(pct) {
+  document.getElementById('progress-fill').style.width = pct + '%';
+}
+
+// ─── Main merge ───────────────────────────────────────────────────────────────
+async function startMerge() {
+  if (!SQL) { alert('Moteur SQLite pas encore prêt, réessayez dans 2 secondes.'); return; }
+
+  document.getElementById('merge-btn').disabled = true;
+  document.getElementById('progress-area').style.display = 'block';
+  document.getElementById('log-box').innerHTML = '';
+  setProgress(5);
+
+  const opts = {
+    notes:     document.getElementById('opt-notes').checked,
+    marks:     document.getElementById('opt-marks').checked,
+    bookmarks: document.getElementById('opt-bookmarks').checked,
+    inputs:    document.getElementById('opt-inputs').checked,
+    tags:      document.getElementById('opt-tags').checked,
+    playlists: document.getElementById('opt-playlists').checked,
+  };
+
+  try {
+    // 1. Load all zip files
+    const zips = [];
+    const loadedFiles = files.filter(Boolean);
+    log('', `${loadedFiles.length} fichier(s) chargé(s)`);
+
+    for (let f of loadedFiles) {
+      const zip = await JSZip.loadAsync(f);
+      zips.push({ zip, name: f.name });
+    }
+    setProgress(15);
+
+    // 2. Extract DBs
+    const dbs = [];
+    for (let { zip, name } of zips) {
+      const dbFile = zip.file('userData.db');
+      if (!dbFile) throw new Error(`userData.db introuvable dans ${name}`);
+      const buf = await dbFile.async('arraybuffer');
+      const db = new SQL.Database(new Uint8Array(buf));
+      dbs.push({ db, name, zip });
+      log('ok', `BD chargée: ${name}`);
+    }
+    setProgress(25);
+
+    // 3. Use first DB as base, merge others into it
+    const baseDb = dbs[0].db;
+    const baseName = dbs[0].name;
+    log('', `Base: ${baseName}`);
+
+    // Check if base has Specialty/Edition columns
+    const baseHasSpecialty = dbHasColumn(baseDb, 'Location', 'Specialty');
+
+    let totalAdded = { notes: 0, marks: 0, bookmarks: 0, inputs: 0, tags: 0 };
+
+    for (let i = 1; i < dbs.length; i++) {
+      const srcDb = dbs[i].db;
+      const srcName = dbs[i].name;
+      log('', `─── Fusion de: ${srcName}`);
+      setProgress(25 + (i / (dbs.length-1)) * 60);
+
+      const srcHasSpecialty = dbHasColumn(srcDb, 'Location', 'Specialty');
+
+      // Disable FK
+      baseDb.run('PRAGMA foreign_keys = OFF');
+
+      // --- Locations ---
+      const locMap = buildLocationMap(baseDb, srcDb, srcHasSpecialty, baseHasSpecialty);
+      log('ok', `Locations mappées: ${Object.keys(locMap).length}`);
+
+      // --- UserMarks ---
+      let markMap = {};
+      if (opts.marks) {
+        markMap = mergeUserMarks(baseDb, srcDb, locMap);
+        const added = Object.values(markMap).filter(v => v._new).length;
+        totalAdded.marks += added;
+        log('ok', `Surlignages: +${added}`);
+      } else {
+        // still build map for note references
+        markMap = buildMarkMapOnly(baseDb, srcDb, locMap);
+      }
+
+      // --- BlockRanges ---
+      if (opts.marks) mergeBlockRanges(baseDb, srcDb, markMap);
+
+      // --- Notes ---
+      let noteMap = {};
+      if (opts.notes) {
+        const r = mergeNotes(baseDb, srcDb, markMap, locMap);
+        noteMap = r.map;
+        totalAdded.notes += r.added;
+        log('ok', `Notes: +${r.added}`);
+      } else {
+        noteMap = buildNoteMapOnly(baseDb, srcDb);
+      }
+
+      // --- Tags ---
+      let tagMap = {};
+      if (opts.tags) {
+        const r = mergeTags(baseDb, srcDb);
+        tagMap = r.map;
+        totalAdded.tags += r.added;
+        log('ok', `Tags: +${r.added}`);
+      } else {
+        tagMap = buildTagMapOnly(baseDb, srcDb);
+      }
+
+      // --- TagMaps ---
+      if (opts.tags) mergeTagMaps(baseDb, srcDb, locMap, noteMap, tagMap);
+
+      // --- Bookmarks ---
+      if (opts.bookmarks) {
+        const added = mergeBookmarks(baseDb, srcDb, locMap);
+        totalAdded.bookmarks += added;
+        log('ok', `Signets: +${added}`);
+      }
+
+      // --- InputFields ---
+      if (opts.inputs) {
+        const added = mergeInputFields(baseDb, srcDb, locMap);
+        totalAdded.inputs += added;
+        log('ok', `Champs: +${added}`);
+      }
+
+      // --- Playlists ---
+      if (opts.playlists) mergePlaylists(baseDb, srcDb, locMap);
+    }
+
+    setProgress(88);
+
+    // Update LastModified
+    try { baseDb.run(`UPDATE LastModified SET LastModified=?`, [new Date().toISOString()]); } catch(e){}
+
+    log('ok', 'Mise à jour de la date de modification');
+
+    // 4. Export merged DB
+    const mergedBytes = baseDb.export();
+    setProgress(92);
+
+    // 5. Build new zip from base zip + merged db
+    const baseZip = dbs[0].zip;
+    // Copy images from all sources
+    for (let i = 1; i < dbs.length; i++) {
+      const srcZip = dbs[i].zip;
+      for (let fname of Object.keys(srcZip.files)) {
+        if ((fname.endsWith('.jpeg') || fname.endsWith('.jpg') || fname.endsWith('.JPG') || fname.endsWith('.png'))
+            && !baseZip.files[fname]) {
+          baseZip.file(fname, await srcZip.file(fname).async('arraybuffer'));
+        }
+      }
+    }
+    baseZip.file('userData.db', mergedBytes);
+    setProgress(96);
+
+    const outBlob = await baseZip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+    setProgress(100);
+    log('ok', 'Fichier .jwlibrary généré');
+
+    // 6. Show results
+    showResults(totalAdded, outBlob, loadedFiles.length);
+
+  } catch(err) {
+    log('err', 'Erreur: ' + err.message);
+    console.error(err);
+  }
+}
+
+// ─── DB helpers ──────────────────────────────────────────────────────────────
+
+function dbHasColumn(db, table, col) {
+  try {
+    const res = db.exec(`PRAGMA table_info(${table})`);
+    if (!res.length) return false;
+    return res[0].values.some(r => r[1] === col);
+  } catch { return false; }
+}
+
+function getMaxId(db, table, col) {
+  try {
+    const r = db.exec(`SELECT MAX(${col}) FROM ${table}`);
+    return (r[0]?.values[0][0]) || 0;
+  } catch { return 0; }
+}
+
+function buildLocationMap(baseDb, srcDb, srcHasSpecialty, baseHasSpecialty) {
+  const map = {};
+  const cols = 'LocationId, BookNumber, ChapterNumber, DocumentId, Track, IssueTagNumber, KeySymbol, MepsLanguage, Type, Title';
+  const rows = srcDb.exec(`SELECT ${cols} FROM Location`);
+  if (!rows.length) return map;
+
+  let maxId = getMaxId(baseDb, 'Location', 'LocationId');
+
+  for (let row of rows[0].values) {
+    const [locId, bookNum, chapNum, docId, track, issueTag, keySym, mepsLang, type, title] = row;
+    const existing = baseDb.exec(
+      `SELECT LocationId FROM Location WHERE BookNumber IS ? AND ChapterNumber IS ? AND DocumentId IS ? AND Track IS ? AND IssueTagNumber IS ? AND KeySymbol IS ? AND MepsLanguage=? AND Type=?`,
+      [bookNum, chapNum, docId, track, issueTag, keySym, mepsLang, type]
+    );
+    if (existing.length && existing[0].values.length) {
+      map[locId] = existing[0].values[0][0];
+    } else {
+      maxId++;
+      if (baseHasSpecialty) {
+        baseDb.run(`INSERT INTO Location (LocationId,BookNumber,ChapterNumber,DocumentId,Track,IssueTagNumber,KeySymbol,MepsLanguage,Type,Title,Specialty,Edition) VALUES (?,?,?,?,?,?,?,?,?,?,NULL,NULL)`,
+          [maxId, bookNum, chapNum, docId, track, issueTag, keySym, mepsLang, type, title]);
+      } else {
+        baseDb.run(`INSERT INTO Location (LocationId,BookNumber,ChapterNumber,DocumentId,Track,IssueTagNumber,KeySymbol,MepsLanguage,Type,Title) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+          [maxId, bookNum, chapNum, docId, track, issueTag, keySym, mepsLang, type, title]);
+      }
+      map[locId] = maxId;
+    }
+  }
+  return map;
+}
+
+function mergeUserMarks(baseDb, srcDb, locMap) {
+  const map = {};
+  const existMap = {};
+  const ex = baseDb.exec(`SELECT UserMarkGuid, UserMarkId FROM UserMark`);
+  if (ex.length) ex[0].values.forEach(r => existMap[r[0]] = r[1]);
+
+  const rows = srcDb.exec(`SELECT UserMarkId, ColorIndex, LocationId, StyleIndex, UserMarkGuid, Version FROM UserMark`);
+  if (!rows.length) return map;
+  let maxId = getMaxId(baseDb, 'UserMark', 'UserMarkId');
+
+  for (let [markId, color, locId, style, guid, version] of rows[0].values) {
+    const mappedLoc = locMap[locId] ?? locId;
+    if (existMap[guid] !== undefined) {
+      map[markId] = { id: existMap[guid], _new: false };
+    } else {
+      maxId++;
+      baseDb.run(`INSERT INTO UserMark VALUES (?,?,?,?,?,?)`, [maxId, color, mappedLoc, style, guid, version]);
+      map[markId] = { id: maxId, _new: true };
+    }
+  }
+  return map;
+}
+
+function buildMarkMapOnly(baseDb, srcDb, locMap) {
+  const map = {};
+  const existMap = {};
+  const ex = baseDb.exec(`SELECT UserMarkGuid, UserMarkId FROM UserMark`);
+  if (ex.length) ex[0].values.forEach(r => existMap[r[0]] = r[1]);
+  const rows = srcDb.exec(`SELECT UserMarkId, UserMarkGuid FROM UserMark`);
+  if (!rows.length) return map;
+  for (let [markId, guid] of rows[0].values) {
+    if (existMap[guid] !== undefined) map[markId] = { id: existMap[guid], _new: false };
+  }
+  return map;
+}
+
+function mergeBlockRanges(baseDb, srcDb, markMap) {
+  const rows = srcDb.exec(`SELECT BlockType, Identifier, StartToken, EndToken, UserMarkId FROM BlockRange`);
+  if (!rows.length) return;
+  let maxId = getMaxId(baseDb, 'BlockRange', 'BlockRangeId');
+  for (let [btype, ident, start, end, markId] of rows[0].values) {
+    const mm = markMap[markId];
+    if (!mm) continue;
+    const mappedMark = mm.id;
+    const ex = baseDb.exec(`SELECT BlockRangeId FROM BlockRange WHERE UserMarkId=? AND BlockType=? AND Identifier=?`, [mappedMark, btype, ident]);
+    if (!ex.length || !ex[0].values.length) {
+      maxId++;
+      baseDb.run(`INSERT INTO BlockRange VALUES (?,?,?,?,?,?)`, [maxId, btype, ident, start, end, mappedMark]);
+    }
+  }
+}
+
+function mergeNotes(baseDb, srcDb, markMap, locMap) {
+  const existGuids = new Set();
+  const ex = baseDb.exec(`SELECT Guid FROM Note`);
+  if (ex.length) ex[0].values.forEach(r => existGuids.add(r[0]));
+  const existMap = {};
+  const ex2 = baseDb.exec(`SELECT Guid, NoteId FROM Note`);
+  if (ex2.length) ex2[0].values.forEach(r => existMap[r[0]] = r[1]);
+
+  const rows = srcDb.exec(`SELECT NoteId, Guid, UserMarkId, LocationId, Title, Content, LastModified, Created, BlockType, BlockIdentifier FROM Note`);
+  if (!rows.length) return { map: {}, added: 0 };
+
+  let maxId = getMaxId(baseDb, 'Note', 'NoteId');
+  const map = {};
+  let added = 0;
+
+  for (let [noteId, guid, markId, locId, title, content, lastMod, created, btype, bident] of rows[0].values) {
+    const mappedMark = markId ? (markMap[markId]?.id ?? null) : null;
+    const mappedLoc  = locId  ? (locMap[locId]   ?? null) : null;
+    if (existMap[guid] !== undefined) {
+      map[noteId] = existMap[guid];
+    } else {
+      maxId++;
+      baseDb.run(`INSERT INTO Note VALUES (?,?,?,?,?,?,?,?,?,?)`,
+        [maxId, guid, mappedMark, mappedLoc, title, content, lastMod, created, btype, bident]);
+      map[noteId] = maxId;
+      added++;
+    }
+  }
+  return { map, added };
+}
+
+function buildNoteMapOnly(baseDb, srcDb) {
+  const existMap = {};
+  const ex = baseDb.exec(`SELECT Guid, NoteId FROM Note`);
+  if (ex.length) ex[0].values.forEach(r => existMap[r[0]] = r[1]);
+  const map = {};
+  const rows = srcDb.exec(`SELECT NoteId, Guid FROM Note`);
+  if (!rows.length) return map;
+  for (let [noteId, guid] of rows[0].values) {
+    if (existMap[guid] !== undefined) map[noteId] = existMap[guid];
+  }
+  return map;
+}
+
+function mergeTags(baseDb, srcDb) {
+  const existMap = {};
+  const ex = baseDb.exec(`SELECT Name, TagId FROM Tag`);
+  if (ex.length) ex[0].values.forEach(r => existMap[r[0]] = r[1]);
+  const rows = srcDb.exec(`SELECT TagId, Type, Name FROM Tag`);
+  if (!rows.length) return { map: {}, added: 0 };
+  let maxId = getMaxId(baseDb, 'Tag', 'TagId');
+  const map = {};
+  let added = 0;
+  for (let [tagId, ttype, name] of rows[0].values) {
+    if (existMap[name] !== undefined) {
+      map[tagId] = existMap[name];
+    } else {
+      maxId++;
+      baseDb.run(`INSERT INTO Tag VALUES (?,?,?)`, [maxId, ttype, name]);
+      map[tagId] = maxId;
+      existMap[name] = maxId;
+      added++;
+    }
+  }
+  return { map, added };
+}
+
+function buildTagMapOnly(baseDb, srcDb) {
+  const existMap = {};
+  const ex = baseDb.exec(`SELECT Name, TagId FROM Tag`);
+  if (ex.length) ex[0].values.forEach(r => existMap[r[0]] = r[1]);
+  const map = {};
+  const rows = srcDb.exec(`SELECT TagId, Name FROM Tag`);
+  if (!rows.length) return map;
+  for (let [tagId, name] of rows[0].values) {
+    if (existMap[name] !== undefined) map[tagId] = existMap[name];
+  }
+  return map;
+}
+
+function mergeTagMaps(baseDb, srcDb, locMap, noteMap, tagMap) {
+  const rows = srcDb.exec(`SELECT PlaylistItemId, LocationId, NoteId, TagId, Position FROM TagMap`);
+  if (!rows.length) return;
+  let maxId = getMaxId(baseDb, 'TagMap', 'TagMapId');
+  for (let [plId, locId, noteId, tagId, pos] of rows[0].values) {
+    const mLoc  = locId  ? (locMap[locId]   ?? null) : null;
+    const mNote = noteId ? (noteMap[noteId]  ?? null) : null;
+    const mTag  = tagId  ? (tagMap[tagId]   ?? null) : null;
+    const ex = baseDb.exec(`SELECT TagMapId FROM TagMap WHERE TagId IS ? AND NoteId IS ? AND LocationId IS ?`, [mTag, mNote, mLoc]);
+    if (!ex.length || !ex[0].values.length) {
+      maxId++;
+      baseDb.run(`INSERT INTO TagMap VALUES (?,?,?,?,?,?)`, [maxId, plId, mLoc, mNote, mTag, pos]);
+    }
+  }
+}
+
+function mergeBookmarks(baseDb, srcDb, locMap) {
+  const rows = srcDb.exec(`SELECT LocationId, PublicationLocationId, Slot, Title, Snippet, BlockType, BlockIdentifier FROM Bookmark`);
+  if (!rows.length) return 0;
+  let maxId = getMaxId(baseDb, 'Bookmark', 'BookmarkId');
+  let added = 0;
+  for (let [locId, pubLocId, slot, title, snippet, btype, bident] of rows[0].values) {
+    const mLoc    = locId    ? (locMap[locId]    ?? null) : null;
+    const mPubLoc = pubLocId ? (locMap[pubLocId] ?? null) : null;
+    const ex = baseDb.exec(`SELECT BookmarkId FROM Bookmark WHERE Title=? AND Slot=?`, [title, slot]);
+    if (!ex.length || !ex[0].values.length) {
+      maxId++;
+      baseDb.run(`INSERT INTO Bookmark VALUES (?,?,?,?,?,?,?,?)`, [maxId, mLoc, mPubLoc, slot, title, snippet, btype, bident]);
+      added++;
+    }
+  }
+  return added;
+}
+
+function mergeInputFields(baseDb, srcDb, locMap) {
+  const existSet = new Set();
+  const ex = baseDb.exec(`SELECT LocationId, TextTag FROM InputField`);
+  if (ex.length) ex[0].values.forEach(r => existSet.add(`${r[0]}_${r[1]}`));
+  const rows = srcDb.exec(`SELECT LocationId, TextTag, Value FROM InputField`);
+  if (!rows.length) return 0;
+  let added = 0;
+  for (let [locId, textTag, value] of rows[0].values) {
+    const mLoc = locMap[locId] ?? locId;
+    if (!existSet.has(`${mLoc}_${textTag}`)) {
+      baseDb.run(`INSERT INTO InputField VALUES (?,?,?)`, [mLoc, textTag, value]);
+      existSet.add(`${mLoc}_${textTag}`);
+      added++;
+    }
+  }
+  return added;
+}
+
+function mergePlaylists(baseDb, srcDb, locMap) {
+  // PlaylistItem, PlaylistItemLocationMap, PlaylistItemIndependentMediaMap
+  try {
+    const existIds = new Set();
+    const ex = baseDb.exec(`SELECT PlaylistItemId FROM PlaylistItem`);
+    if (ex.length) ex[0].values.forEach(r => existIds.add(r[0]));
+    const rows = srcDb.exec(`SELECT * FROM PlaylistItem`);
+    if (!rows.length) return;
+    // Simple merge: skip existing IDs
+    let maxId = getMaxId(baseDb, 'PlaylistItem', 'PlaylistItemId');
+    for (let row of rows[0].values) {
+      if (!existIds.has(row[0])) {
+        maxId++;
+        const newRow = [maxId, ...row.slice(1)];
+        const ph = newRow.map(()=>'?').join(',');
+        baseDb.run(`INSERT OR IGNORE INTO PlaylistItem VALUES (${ph})`, newRow);
+      }
+    }
+  } catch(e) { /* PlaylistItem schema may vary */ }
+}
+
+// ─── Show results ─────────────────────────────────────────────────────────────
+let _mergedBlob = null;
+let _mergedFilename = null;
+
+function showResults(totals, blob, fileCount) {
+  document.getElementById('progress-area').style.display = 'none';
+  document.getElementById('result-area').style.display = 'block';
+
+  const stats = [
+    { v: '+' + totals.notes,     l: 'Notes' },
+    { v: '+' + totals.marks,     l: 'Surlignages' },
+    { v: '+' + totals.bookmarks, l: 'Signets' },
+    { v: fileCount,               l: 'Fichiers' },
+    { v: '+' + totals.tags,      l: 'Tags' },
+    { v: '+' + totals.inputs,    l: 'Champs' },
+  ];
+  document.getElementById('result-stats').innerHTML = stats.map(s => `
+    <div class="stat-box">
+      <div class="stat-value">${s.v}</div>
+      <div class="stat-label">${s.l}</div>
+    </div>`).join('');
+
+  const dateStr = new Date().toISOString().slice(0,10);
+  _mergedFilename = `UserdataBackup_${dateStr}_Merged.jwlibrary`;
+  _mergedBlob = new File([blob], _mergedFilename, { type: 'application/zip' });
+
+  document.getElementById('download-btn').onclick = shareFile;
+}
+
+function shareFile() {
+  if (!_mergedBlob) return;
+  // Sur iOS Safari, window.open() depuis un événement utilisateur fonctionne
+  // et ouvre le fichier dans un nouvel onglet avec un bouton Partager natif
+  const url = URL.createObjectURL(_mergedBlob);
+  const newTab = window.open(url, '_blank');
+  if (!newTab) {
+    // Si le popup est bloqué, on navigue dans le même onglet
+    window.location.href = url;
+  }
+}
+
+function resetApp() {
+  files = [null, null];
+  document.getElementById('result-area').style.display = 'none';
+  document.getElementById('progress-area').style.display = 'none';
+  document.getElementById('merge-btn').disabled = true;
+  buildDropZones();
+}
+</script>
+</body>
+</html>
