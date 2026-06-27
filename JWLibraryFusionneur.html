@@ -806,14 +806,19 @@ function mergeBookmarks(baseDb, srcDb, locMap) {
   const rows = srcDb.exec(`SELECT LocationId, PublicationLocationId, Slot, Title, Snippet, BlockType, BlockIdentifier FROM Bookmark`);
   if (!rows.length) return 0;
   let maxId = getMaxId(baseDb, 'Bookmark', 'BookmarkId');
+  // Charger toutes les combinaisons existantes
+  const exSet = new Set();
+  const exRows = baseDb.exec(`SELECT PublicationLocationId, Slot, Title FROM Bookmark`);
+  if (exRows.length) exRows[0].values.forEach(r => exSet.add(r[0]+'_'+r[1]+'_'+r[2]));
   let added = 0;
   for (let [locId, pubLocId, slot, title, snippet, btype, bident] of rows[0].values) {
     const mLoc    = locId    ? (locMap[locId]    ?? null) : null;
     const mPubLoc = pubLocId ? (locMap[pubLocId] ?? null) : null;
-    const ex = baseDb.exec(`SELECT BookmarkId FROM Bookmark WHERE Title=? AND Slot=?`, [title, slot]);
-    if (!ex.length || !ex[0].values.length) {
+    const key = mPubLoc+'_'+slot+'_'+title;
+    if (!exSet.has(key)) {
       maxId++;
-      baseDb.run(`INSERT INTO Bookmark VALUES (?,?,?,?,?,?,?,?)`, [maxId, mLoc, mPubLoc, slot, title, snippet, btype, bident]);
+      baseDb.run(`INSERT OR IGNORE INTO Bookmark VALUES (?,?,?,?,?,?,?,?)`, [maxId, mLoc, mPubLoc, slot, title, snippet, btype, bident]);
+      exSet.add(key);
       added++;
     }
   }
