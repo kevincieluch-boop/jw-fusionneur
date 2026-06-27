@@ -327,10 +327,9 @@
 <div class="card">
   <div class="card-title">Fichiers à fusionner</div>
   <div id="drop-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
-  <label style="display:block;width:100%;padding:16px;border-radius:10px;border:2px dashed rgba(124,106,247,.3);background:transparent;color:#a78bfa;font-size:14px;font-weight:600;cursor:pointer;text-align:center;box-sizing:border-box">
+  <button onclick="openFilePicker()" style="display:block;width:100%;padding:16px;border-radius:10px;border:2px dashed rgba(124,106,247,.3);background:transparent;color:#a78bfa;font-size:14px;font-weight:600;cursor:pointer;text-align:center;box-sizing:border-box">
     📂 Sélectionner un ou plusieurs fichiers
-    <input type="file" accept=".jwlibrary" multiple style="display:none" onchange="handleMultiFiles(this)">
-  </label>
+  </button>
 </div>
 
 <!-- OPTIONS -->
@@ -390,11 +389,20 @@ initSqlJs({ locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10
 // ─── Multi-file handler ───────────────────────────────────────────────────────
 function handleMultiFiles(input) {
   const newFiles = Array.from(input.files).filter(f => f.name.endsWith('.jwlibrary'));
-  // Ajouter sans doublons
   newFiles.forEach(f => { if (!files.find(x => x.name === f.name)) files.push(f); });
   renderFileList();
   checkReady();
-  input.value = ''; // reset pour pouvoir resélectionner
+  // Ne pas réinitialiser input.value pour permettre d'ajouter fichier par fichier
+}
+
+// Appelé à chaque fois qu'on appuie sur le bouton — crée un nouvel input frais
+function openFilePicker() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.jwlibrary';
+  input.multiple = true;
+  input.onchange = () => handleMultiFiles(input);
+  input.click();
 }
 
 function removeFile(index) {
