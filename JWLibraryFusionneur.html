@@ -896,6 +896,18 @@ function showResults(totals, blob, fileCount) {
 
 function shareFile() {
   if (!_mergedBlob) return;
+  // Web Share API : ouvre la feuille de partage iOS pour choisir l'emplacement
+  // On crée un nouveau File sans type MIME pour éviter le fichier .txt parasite
+  const cleanFile = new File([_mergedBlob], _mergedFilename, { type: 'application/octet-stream' });
+  if (navigator.share && navigator.canShare && navigator.canShare({ files: [cleanFile] })) {
+    navigator.share({ files: [cleanFile], title: _mergedFilename })
+      .catch(e => { if (e.name !== 'AbortError') fallbackDownload(); });
+    return;
+  }
+  fallbackDownload();
+}
+
+function fallbackDownload() {
   const url = URL.createObjectURL(_mergedBlob);
   const a = document.createElement('a');
   a.href = url;
