@@ -390,10 +390,14 @@ initSqlJs({ locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10
 // ─── Multi-file handler ───────────────────────────────────────────────────────
 function handleMultiFiles(input) {
   const newFiles = Array.from(input.files).filter(f => f.name.endsWith('.jwlibrary'));
-  newFiles.forEach(f => { if (!files.find(x => x.name === f.name)) files.push(f); });
+  // Autoriser les fichiers même nom mais taille différente (iPhone vs iPad)
+  newFiles.forEach(f => {
+    const isDuplicate = files.find(x => x.name === f.name && x.size === f.size);
+    if (!isDuplicate) files.push(f);
+  });
   renderFileList();
   checkReady();
-  input.value = ''; // reset pour pouvoir resélectionner d'autres fichiers
+  input.value = '';
 }
 
 function removeFile(index) {
@@ -405,13 +409,17 @@ function removeFile(index) {
 function renderFileList() {
   const list = document.getElementById('drop-list');
   const icons = ['📱','📲','💾','📂','📄'];
-  list.innerHTML = files.map((f, i) => `
+  list.innerHTML = files.map((f, i) => {
+    // Afficher taille si deux fichiers ont le même nom
+    const sameNameCount = files.filter(x => x.name === f.name).length;
+    const label = sameNameCount > 1 ? `${f.name} (${(f.size/1024/1024).toFixed(1)} Mo)` : f.name;
+    return `
     <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(74,222,128,.05);border:1px solid rgba(74,222,128,.25);border-radius:10px">
       <span style="font-size:18px">${icons[Math.min(i, icons.length-1)]}</span>
-      <span style="flex:1;font-size:13px;color:#4ade80;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name}</span>
+      <span style="flex:1;font-size:13px;color:#4ade80;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</span>
       <button onclick="removeFile(${i})" style="background:none;border:none;color:#7a7a9a;cursor:pointer;font-size:20px;line-height:1;padding:0">×</button>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 function checkReady() {
@@ -885,8 +893,10 @@ function showResults(totals, blob, fileCount) {
       <div class="stat-label">${s.l}</div>
     </div>`).join('');
 
-  const dateStr = new Date().toISOString().slice(0,10);
-  _mergedFilename = `UserdataBackup_${dateStr}_Merged.jwlibrary`;
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0,10);
+  const timeStr = now.toTimeString().slice(0,8).replace(/:/g,'-');
+  _mergedFilename = `UserdataBackup_${dateStr}_${timeStr}_Merged.jwlibrary`;
   // Type MIME neutre pour que Safari ne renomme pas en .zip
   _mergedBlob = new File([blob], _mergedFilename, { type: 'application/octet-stream' });
 
